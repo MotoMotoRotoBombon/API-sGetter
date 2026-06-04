@@ -1,0 +1,160 @@
+service: citypulse
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'eu-west-1'}
+  environment:
+    STAGE: ${self:provider.stage}
+    CACHE_TABLE_NAME: citypulse-cache-${self:provider.stage}
+    SNS_TOPIC_ARN: !Ref CityPulseTopic
+    OPENWEATHER_API_KEY: ${env:OPENWEATHER_API_KEY, ''}
+    AQICN_API_KEY: ${env:AQICN_API_KEY, ''}
+    NEWS_API_KEY: ${env:NEWS_API_KEY, ''}
+    DATABASE_URL: ${env:DATABASE_URL, ''}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - !GetAtt CityPulseCacheTable.Arn
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - !Ref CityPulseTopic
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource:
+            - !GetAtt AuditQueue.Arn
+            - !GetAtt AuditDeadLetterQueue.Arn
+
+functions:
+  ping:
+    handler: src/interfaces/http/handlers.ping
+    events:
+      - http:
+          path: ping
+          method: get
+          cors: true
+
+  weather:
+    handler: src/interfaces/http/handlers.weather
+    events:
+      - http:
+          path: weather/{city}
+          method: get
+          cors: true
+
+  news:
+    handler: src/interfaces/http/handlers.news
+    events:
+      - http:
+          path: news/{city}
+          method: get
+          cors: true
+
+  cities:
+    handler: src/interfaces/http/handlers.cities
+    events:
+      - http:
+          path: cities
+          method: get
+          cors: true
+
+  auditProcessor:
+    handler: src/interfaces/sqs/handlers.processAudit
+    events:
+      - sqs:
+          arn: !GetAtt AuditQueue.Arn
+          batchSize: 10
+
+  alertProcessor:
+    handler: src/interfaces/sqs/handlers.processAlert
+    events:
+      - sqs:
+          arn: !GetAtt AuditDeadLetterQueue.Arn
+          batchSize: 5
+
+resources:
+  Resources:
+    CityPulseCacheTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: citypulse-cache-${self:provider.stage}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+    CityPulseTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: citypulse-${self:provider.stage}
+
+    AuditDeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: citypulse-audit-dlq-${self:provider.stage}
+        VisibilityTimeout: 30
+        MessageRetentionPeriod: 1209600
+
+    AuditQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: citypulse-audit-${self:provider.stage}
+        VisibilityTimeout: 30
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt AuditDeadLetterQueue.Arn
+          maxReceiveCount: 3
+
+    AuditQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref AuditQueue
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: sns.amazonaws.com
+              Action: sqs:SendMessage
+              Resource: !GetAtt AuditQueue.Arn
+              Condition:
+                ArnEquals:
+                  aws:SourceArn: !Ref CityPulseTopic
+
+    AuditSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Protocol: sqs
+        TopicArn: !Ref CityPulseTopic
+        Endpoint: !GetAtt AuditQueue.Arn
+        FilterPolicy:
+          eventType:
+            - weather-fetched
+            - news-fetched
+
+plugins:
+  - serverless-esbuild
+  - serverless-offline
