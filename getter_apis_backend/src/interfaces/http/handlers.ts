@@ -7,16 +7,27 @@ import { StoreCityData } from '@application/use-cases/StoreCityData';
 import { OpenWeatherMapClient } from '@infrastructure/external/OpenWeatherMapClient';
 import { NewsApiClient } from '@infrastructure/external/NewsApiClient';
 import { DynamoDBCacheRepository } from '@infrastructure/cache/DynamoDBCacheRepository';
+import { InMemoryCacheRepository } from '@infrastructure/cache/InMemoryCacheRepository';
 import { SNSPublisher } from '@infrastructure/messaging/SNSPublisher';
+import { ConsoleEventPublisher } from '@infrastructure/messaging/ConsoleEventPublisher';
 import { createDb } from '@infrastructure/database/client';
 import { NeonCityRepository } from '@infrastructure/database/NeonCityRepository';
+import { CacheRepository } from '@domain/services/CacheRepository';
+import { EventPublisher } from '@domain/services/EventPublisher';
 import { AppError } from '@shared/errors';
 import { formatResponse, formatError } from './response';
 
 const getHealth = new GetHealth();
 
-const cacheRepository = new DynamoDBCacheRepository(process.env.CACHE_TABLE_NAME ?? '');
-const eventPublisher = new SNSPublisher(process.env.SNS_TOPIC_ARN ?? '');
+const isOffline = process.env.IS_OFFLINE === 'true';
+
+const cacheRepository: CacheRepository = isOffline
+  ? new InMemoryCacheRepository()
+  : new DynamoDBCacheRepository(process.env.CACHE_TABLE_NAME ?? '');
+
+const eventPublisher: EventPublisher = isOffline
+  ? new ConsoleEventPublisher()
+  : new SNSPublisher(process.env.SNS_TOPIC_ARN ?? '');
 
 let storeCityData: StoreCityData | undefined;
 let searchCities: SearchCities | undefined;
