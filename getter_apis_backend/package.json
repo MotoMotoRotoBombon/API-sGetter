@@ -24,20 +24,24 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "serverless"
+    ]
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@types/aws-lambda": "^8.10.145",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.0",
-    "esbuild": "^0.24.2",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "jest": "^29.7.0",
     "prettier": "^3.4.2",
-    "serverless": "^3.40.0",
-    "serverless-esbuild": "^1.55.0",
-    "serverless-offline": "^13.9.0",
+    "serverless": "^4.37.0",
+    "serverless-offline": "^14.7.1",
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.59.4"

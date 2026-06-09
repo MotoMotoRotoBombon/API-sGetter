@@ -1,12 +1,14 @@
 service: citypulse
 
-frameworkVersion: '3'
+frameworkVersion: '4'
+
+useDotenv: true
 
 provider:
   name: aws
   runtime: nodejs22.x
   stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'eu-west-1'}
+  region: ${opt:region, 'us-east-2'}
   environment:
     STAGE: ${self:provider.stage}
     CACHE_TABLE_NAME: citypulse-cache-${self:provider.stage}
@@ -156,5 +158,4 @@ resources:
             - news-fetched
 
 plugins:
-  - serverless-esbuild
   - serverless-offline
