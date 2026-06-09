@@ -1,7 +1,5 @@
 service: citypulse
-
 frameworkVersion: '4'
-
 useDotenv: true
 
 provider:
@@ -43,54 +41,7 @@ provider:
           Resource:
             - !GetAtt AuditQueue.Arn
             - !GetAtt AuditDeadLetterQueue.Arn
-
-functions:
-  ping:
-    handler: src/interfaces/http/handlers.ping
-    events:
-      - http:
-          path: ping
-          method: get
-          cors: true
-
-  weather:
-    handler: src/interfaces/http/handlers.weather
-    events:
-      - http:
-          path: weather/{city}
-          method: get
-          cors: true
-
-  news:
-    handler: src/interfaces/http/handlers.news
-    events:
-      - http:
-          path: news/{city}
-          method: get
-          cors: true
-
-  cities:
-    handler: src/interfaces/http/handlers.cities
-    events:
-      - http:
-          path: cities
-          method: get
-          cors: true
-
-  auditProcessor:
-    handler: src/interfaces/sqs/handlers.processAudit
-    events:
-      - sqs:
-          arn: !GetAtt AuditQueue.Arn
-          batchSize: 10
-
-  alertProcessor:
-    handler: src/interfaces/sqs/handlers.processAlert
-    events:
-      - sqs:
-          arn: !GetAtt AuditDeadLetterQueue.Arn
-          batchSize: 5
-
+            
 resources:
   Resources:
     CityPulseCacheTable:
@@ -159,3 +110,50 @@ resources:
 
 plugins:
   - serverless-offline
+
+functions:
+  ping:
+    handler: src/interfaces/http/handlers.ping
+    events:
+      - http:
+          path: ping
+          method: get
+          cors: true
+
+  weather:
+    handler: src/interfaces/http/handlers.weather
+    events:
+      - http:
+          path: weather/{city}
+          method: get
+          cors: true
+
+  news:
+    handler: src/interfaces/http/handlers.news
+    events:
+      - http:
+          path: news/{city}
+          method: get
+          cors: true
+
+  cities:
+    handler: src/interfaces/http/handlers.cities
+    events:
+      - http:
+          path: cities
+          method: get
+          cors: true
+
+  auditProcessor:
+    handler: src/interfaces/sqs/handlers.processAudit
+    events:
+      - sqs:
+          arn: !GetAtt AuditQueue.Arn
+          batchSize: 10
+
+  alertProcessor:
+    handler: src/interfaces/sqs/handlers.processAlert
+    events:
+      - sqs:
+          arn: !GetAtt AuditDeadLetterQueue.Arn
+          batchSize: 5
