@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchCities } from "@/lib/api";
 
@@ -9,12 +9,13 @@ export default function SearchBar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const deferredQuery = useDeferredValue(query.trim());
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: cities, isFetching } = useQuery({
-    queryKey: ["cities", query],
-    queryFn: () => searchCities(query),
-    enabled: query.length >= 2,
+  const { data: cities, isFetching, error } = useQuery({
+    queryKey: ["cities", deferredQuery],
+    queryFn: () => searchCities(deferredQuery, 8),
+    enabled: deferredQuery.length >= 2,
     staleTime: 30_000,
   });
 
@@ -34,9 +35,17 @@ export default function SearchBar() {
     router.push(`/city/${encodeURIComponent(cityName)}`);
   }
 
+  const showResults = isOpen && query.trim().length >= 2;
+
   return (
     <div ref={containerRef} className="relative w-full max-w-md mx-auto">
-      <div className="relative">
+      <form
+        className="relative"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (cities?.[0]) handleSelect(cities[0].name);
+        }}
+      >
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted"
           fill="none"
@@ -59,6 +68,11 @@ export default function SearchBar() {
           }}
           onFocus={() => query.length >= 2 && setIsOpen(true)}
           placeholder="Search a city..."
+          aria-label="Search a city"
+          role="combobox"
+          aria-expanded={showResults}
+          aria-controls="city-search-results"
+          autoComplete="off"
           className="w-full bg-bg-secondary border border-border rounded-lg py-2.5 pl-10 pr-4 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors"
         />
         {isFetching && (
@@ -66,13 +80,25 @@ export default function SearchBar() {
             <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
           </div>
         )}
-      </div>
+      </form>
 
-      {isOpen && cities && cities.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full bg-bg-secondary border border-border rounded-lg shadow-lg overflow-hidden">
-          {cities.map((city) => (
+      {showResults && (
+        <div
+          id="city-search-results"
+          className="absolute z-10 mt-1 w-full bg-bg-secondary border border-border rounded-lg shadow-xl overflow-hidden"
+        >
+          {error ? (
+            <p className="px-4 py-3 text-sm text-red-300">{error.message}</p>
+          ) : !isFetching && cities?.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-text-muted">
+              No matching cities found
+            </p>
+          ) : (
+            <ul>
+              {cities?.map((city) => (
             <li key={city.id}>
               <button
+                type="button"
                 onClick={() => handleSelect(city.name)}
                 className="w-full text-left px-4 py-2.5 hover:bg-bg-card transition-colors flex items-center justify-between"
               >
@@ -82,8 +108,10 @@ export default function SearchBar() {
                 </span>
               </button>
             </li>
-          ))}
-        </ul>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );

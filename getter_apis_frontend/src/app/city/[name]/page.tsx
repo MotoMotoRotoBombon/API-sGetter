@@ -30,7 +30,12 @@ export default function CityPage({
         </div>
       </header>
 
-      <h1 className="text-2xl font-bold text-text-primary">{city}</h1>
+      <div>
+        <p className="text-xs font-medium uppercase tracking-widest text-accent">
+          City overview
+        </p>
+        <h1 className="mt-1 text-2xl font-bold text-text-primary">{city}</h1>
+      </div>
 
       <div className="space-y-4">
         <WeatherCard city={city} />

@@ -46,7 +46,7 @@ function Article({ article }: { article: NewsArticle }) {
 }
 
 export default function NewsCard({ city }: { city: string }) {
-  const { data, isLoading, error } = useQuery<NewsArticle[]>({
+  const { data, isLoading, error, refetch, isFetching } = useQuery<NewsArticle[]>({
     queryKey: ["news", city],
     queryFn: () => getNews(city),
   });
@@ -57,10 +57,27 @@ export default function NewsCard({ city }: { city: string }) {
       <div className="bg-bg-card border border-border rounded-xl p-5">
         <h2 className="text-lg font-semibold text-text-primary mb-2">News</h2>
         <p className="text-text-muted text-sm">{error.message}</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="mt-4 text-sm font-medium text-accent hover:text-accent-hover disabled:opacity-50"
+        >
+          {isFetching ? "Retrying..." : "Try again"}
+        </button>
       </div>
     );
   }
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) {
+    return (
+      <div className="bg-bg-card border border-border rounded-xl p-5">
+        <h2 className="text-lg font-semibold text-text-primary mb-2">News</h2>
+        <p className="text-text-muted text-sm">
+          No recent articles were found for {city}.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-bg-card border border-border rounded-xl p-5">

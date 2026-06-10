@@ -2,18 +2,22 @@ const BASE_URL = "";
 
 async function fetchApi<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`);
-  const json = await res.json();
+  const json = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(json.error ?? `API error: ${res.status}`);
+    throw new Error(json?.error ?? `API error: ${res.status}`);
   }
 
-  if (json.success && json.data !== undefined) {
+  if (json?.success && json.data !== undefined) {
     return json.data as T;
   }
 
-  if (json.success === false) {
+  if (json?.success === false) {
     throw new Error(json.error ?? "Unknown API error");
+  }
+
+  if (json === null) {
+    throw new Error("The server returned an invalid response");
   }
 
   return json as T;
